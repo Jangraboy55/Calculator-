@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pro Responsive Calculator</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: "Segoe UI", sans-serif; }
+    body {
+      display: flex; justify-content: center; align-items: center;
+      min-height: 100vh; transition: background 0.5s ease, color 0.5s ease;
+    }
+    body.dark { background: linear-gradient(135deg, #1e1e2f, #252547); color: #fff; }
+    body.light { background: linear-gradient(135deg, #f0f0f0, #dcdcdc); color: #000; }
+
+    .container {
+      display: flex; gap: 20px; align-items: flex-start;
+    }
+
+    /* Calculator */
+    .calculator {
+      border-radius: 20px; box-shadow: 0 15px 25px rgba(0,0,0,0.4);
+      overflow: hidden; width: 90%; max-width: 380px;
+      display: grid; grid-template-rows: auto 1fr;
+      animation: fadeIn 1s ease;
+      background: var(--calc-bg);
+    }
+    body.dark .calculator { --calc-bg: #2b2b40; }
+    body.light .calculator { --calc-bg: #ffffff; }
+
+    /* Display */
+    .display {
+      text-align: right; padding: 20px; font-size: 2rem;
+      font-weight: bold; word-wrap: break-word; min-height: 70px;
+      background: var(--display-bg); color: var(--display-color);
+    }
+    body.dark .display { --display-bg: #1e1e2f; --display-color: #fff; }
+    body.light .display { --display-bg: #f7f7f7; --display-color: #000; }
+
+    /* Buttons grid */
+    .buttons {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 10px; padding: 15px;
+    }
+    button {
+      padding: 20px; font-size: 1.2rem; font-weight: 600;
+      border: none; border-radius: 12px; cursor: pointer;
+      transition: transform 0.2s, background 0.3s;
+    }
+    body.dark button { background: #3b3b57; color: #fff; }
+    body.light button { background: #e0e0e0; color: #000; }
+    button:hover { transform: translateY(-3px); }
+    button:active { transform: scale(0.95); }
+
+    .equal { background: #ff5f57; color: #fff; grid-column: span 2; }
+    .equal:hover { background: #ff7a70; }
+    .clear { background: #ffbd2e; color: #000; }
+    .clear:hover { background: #ffc84f; }
+    .operator { background: #34c759; color: #fff; }
+    .operator:hover { background: #4be06f; }
+
+    /* Mode Toggle */
+    .mode-toggle {
+      position: absolute; top: 20px; right: 20px;
+      padding: 10px 15px; border-radius: 25px; border: none;
+      font-size: 1rem; cursor: pointer;
+      background: #444; color: #fff; transition: all 0.4s ease;
+    }
+    body.light .mode-toggle { background: #ddd; color: #000; }
+
+    /* History Panel */
+    .history {
+      width: 200px; max-height: 400px; overflow-y: auto;
+      padding: 15px; border-radius: 15px;
+      background: var(--history-bg); color: var(--history-color);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+      font-size: 0.9rem; line-height: 1.5;
+    }
+    body.dark .history { --history-bg: #2e2e44; --history-color: #fff; }
+    body.light .history { --history-bg: #fff; --history-color: #000; }
+    .history h3 { margin-bottom: 10px; text-align: center; }
+    .history-item { margin-bottom: 8px; border-bottom: 1px solid rgba(0,0,0,0.1); padding-bottom: 4px; }
+
+    /* Animations */
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(20px);} to {opacity: 1; transform: translateY(0);} }
+
+    @media (max-width: 768px) {
+      .container { flex-direction: column; align-items: center; }
+      .history { width: 90%; max-width: 380px; margin-top: 15px; }
+    }
+  </style>
+</head>
+<body class="dark">
+  <button class="mode-toggle" onclick="toggleMode()">🌗 Mode</button>
+
+  <div class="container">
+    <!-- Calculator -->
+    <div class="calculator">
+      <div class="display" id="display">0</div>
+      <div class="buttons">
+        <button class="clear" onclick="clearDisplay()">C</button>
+        <button onclick="deleteLast()">⌫</button>
+        <button class="operator" onclick="appendOperator('%')">%</button>
+        <button class="operator" onclick="appendOperator('/')">÷</button>
+
+        <button onclick="appendNumber('7')">7</button>
+        <button onclick="appendNumber('8')">8</button>
+        <button onclick="appendNumber('9')">9</button>
+        <button class="operator" onclick="appendOperator('*')">×</button>
+
+        <button onclick="appendNumber('4')">4</button>
+        <button onclick="appendNumber('5')">5</button>
+        <button onclick="appendNumber('6')">6</button>
+        <button class="operator" onclick="appendOperator('-')">−</button>
+
+        <button onclick="appendNumber('1')">1</button>
+        <button onclick="appendNumber('2')">2</button>
+        <button onclick="appendNumber('3')">3</button>
+        <button class="operator" onclick="appendOperator('+')">+</button>
+
+        <button onclick="appendNumber('0')">0</button>
+        <button onclick="appendNumber('.')">.</button>
+        <button class="equal" onclick="calculateResult()">=</button>
+      </div>
+    </div>
+
+    <!-- History -->
+    <div class="history" id="history">
+      <h3>History</h3>
+      <div id="history-list"></div>
+    </div>
+  </div>
+
+  <script>
+    const display = document.getElementById("display");
+    const historyList = document.getElementById("history-list");
+    let currentInput = "0";
+    let history = [];
+
+    function updateDisplay() {
+      display.textContent = currentInput;
+    }
+
+    function clearDisplay() {
+      currentInput = "0";
+      updateDisplay();
+    }
+
+    function deleteLast() {
+      currentInput = currentInput.slice(0, -1) || "0";
+      updateDisplay();
+    }
+
+    function appendNumber(num) {
+      if (currentInput === "0") currentInput = "";
+      currentInput += num;
+      updateDisplay();
+    }
+
+    function appendOperator(op) {
+      if (/[\+\-\*\/%]$/.test(currentInput)) {
+        currentInput = currentInput.slice(0, -1);
+      }
+      currentInput += op;
+      updateDisplay();
+    }
+
+    function calculateResult() {
+      try {
+        const expression = currentInput;
+        const result = eval(expression).toString();
+        currentInput = result;
+        addToHistory(expression + " = " + result);
+      } catch {
+        currentInput = "Error";
+      }
+      updateDisplay();
+    }
+
+    function addToHistory(entry) {
+      history.unshift(entry);
+      if (history.length > 10) history.pop(); // keep only last 10
+      renderHistory();
+    }
+
+    function renderHistory() {
+      historyList.innerHTML = "";
+      history.forEach(item => {
+        const div = document.createElement("div");
+        div.className = "history-item";
+        div.textContent = item;
+        historyList.appendChild(div);
+      });
+    }
+
+    function toggleMode() {
+      document.body.classList.toggle("dark");
+      document.body.classList.toggle("light");
+    }
+
+    updateDisplay();
+  </script>
+</body>
+</html>
